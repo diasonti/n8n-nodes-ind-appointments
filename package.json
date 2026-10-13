@@ -1,0 +1,48 @@
+{
+    "name": "n8n-nodes-ind-appointments",
+    "version": "0.1.0",
+    "description": "An n8n community node for fetching available IND appointment slots",
+    "homepage": "https://github.com/diasonti/n8n-nodes-ind-appointments#readme",
+    "license": "MIT",
+    "author": {
+        "name": "Diasonti",
+        "email": "taco-slogan-petal@duck.com"
+    },
+    "keywords": [
+        "n8n-community-node-package"
+    ],
+    "engines": {
+        "node": ">=24"
+    },
+    "scripts": {
+        "build": "n8n-node build",
+        "dev": "n8n-node dev",
+        "lint": "n8n-node lint",
+        "lint:fix": "n8n-node lint --fix",
+        "format:fix": "prettier --write .",
+        "format:check": "prettier --check .",
+        "test": "npm run build && node --test tests/*.test.cjs",
+        "prepublishOnly": "npm run lint && npm run format:check && npm test"
+    },
+    "files": [
+        "dist"
+    ],
+    "n8n": {
+        "n8nNodesApiVersion": 1,
+        "strict": true,
+        "credentials": [],
+        "nodes": [
+            "dist/nodes/Ind/IndGetAppointmentSlots.node.js"
+        ]
+    },
+    "devDependencies": {
+        "@n8n/node-cli": "^0.52.2",
+        "eslint": "^9.39.4",
+        "n8n-workflow": "2.16.0",
+        "prettier": "^3.8.3",
+        "typescript": "~5.9.3"
+    },
+    "peerDependencies": {
+        "n8n-workflow": "*"
+    }
+}

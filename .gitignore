@@ -1,0 +1,11 @@
+.idea/
+
+node_modules/
+dist/
+coverage/
+*.tsbuildinfo
+*.log
+.n8n/
+.n8n-node-cli/
+.env
+.env.*

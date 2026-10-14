@@ -1,6 +1,6 @@
 {
     "name": "n8n-nodes-ind-appointments",
-    "version": "0.1.1",
+    "version": "0.1.2",
     "description": "An n8n community node for fetching available IND appointment slots",
     "homepage": "https://github.com/diasonti/n8n-nodes-ind-appointments#readme",
     "repository": {

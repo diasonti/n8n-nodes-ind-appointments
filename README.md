@@ -35,11 +35,11 @@ Create a workflow with **Manual Trigger → IND: Get Appointment Slots**, set th
 | **Product** | Non-empty string | `DOC`   |
 | **Persons** | Positive integer | `6`     |
 
-Each input item returns `desk`, `product`, `persons`, and a `slots` array. No available appointments returns `slots: []`. Inputs and options support n8n expressions.
+Each input item returns a `slots` array. No available appointments returns `slots: []`. Inputs and options support n8n expressions.
 
 Under **Options** (both off by default):
 
-- **Include Input Fields**: copy incoming JSON fields into the output; output fields take precedence.
+- **Include Input Fields**: add the configured `desk`, `product`, and `persons` to each successful output item. Fields from previous nodes are not copied. When off, these configured fields are omitted.
 - **Explode Slots**: return one item per slot with slot fields at the top level instead of a `slots` array. No slots produces no items.
 
 Use **On Error → Continue** to return an `error` field instead of stopping the workflow.

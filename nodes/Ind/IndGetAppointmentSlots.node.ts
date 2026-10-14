@@ -13,7 +13,8 @@ export class IndGetAppointmentSlots implements INodeType {
         icon: { light: 'file:ind.svg', dark: 'file:ind.svg' },
         group: ['input'],
         version: 1,
-        subtitle: '={{$parameter["desk"] + " / " + $parameter["product"]}}',
+        subtitle:
+            '={{$parameter["product"] + "-" + $parameter["desk"] + "-" + $parameter["persons"]}}',
         description: 'Fetch available IND appointment slots',
         defaults: {
             name: 'IND: Get Appointment Slots',
@@ -23,15 +24,6 @@ export class IndGetAppointmentSlots implements INodeType {
         usableAsTool: true,
         properties: [
             {
-                displayName: 'Desk',
-                name: 'desk',
-                type: 'string',
-                default: '',
-                placeholder: 'AM',
-                required: true,
-                description: 'IND desk code',
-            },
-            {
                 displayName: 'Product',
                 name: 'product',
                 type: 'string',
@@ -39,6 +31,15 @@ export class IndGetAppointmentSlots implements INodeType {
                 placeholder: 'DOC',
                 required: true,
                 description: 'IND product code, sent as the productKey query parameter',
+            },
+            {
+                displayName: 'Desk',
+                name: 'desk',
+                type: 'string',
+                default: '',
+                placeholder: 'AM',
+                required: true,
+                description: 'IND desk code',
             },
             {
                 displayName: 'Persons',
@@ -70,7 +71,7 @@ export class IndGetAppointmentSlots implements INodeType {
                         type: 'boolean',
                         default: false,
                         description:
-                            'Whether to include input JSON fields in successful outputs. Node output fields override input fields with the same names.',
+                            'Whether to include the configured Desk, Product, and Persons values in successful outputs. Fields from previous nodes are not copied.',
                     },
                 ],
             },
@@ -172,19 +173,20 @@ export class IndGetAppointmentSlots implements INodeType {
                     );
                 }
 
-                const inputFields = options.includeInputFields ? item.json : {};
-                const nodeFields = { desk: desk.trim(), product: product.trim(), persons };
+                const inputFields = options.includeInputFields
+                    ? { desk: desk.trim(), product: product.trim(), persons }
+                    : {};
 
                 if (options.explodeSlots) {
                     for (const slot of response.data) {
                         returnData.push({
-                            json: { ...inputFields, ...slot, ...nodeFields },
+                            json: { ...slot, ...inputFields },
                             pairedItem: { item: itemIndex },
                         });
                     }
                 } else {
                     returnData.push({
-                        json: { ...inputFields, ...nodeFields, slots: response.data },
+                        json: { ...inputFields, slots: response.data },
                         pairedItem: { item: itemIndex },
                     });
                 }

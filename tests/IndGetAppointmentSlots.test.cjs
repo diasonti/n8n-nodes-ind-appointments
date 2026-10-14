@@ -61,7 +61,7 @@ test('provides an optional explode-slots flag that defaults to false', () => {
     assert.notEqual(flag.required, true);
 });
 
-test('fetches slots, strips XSSI, and returns node settings without mutating input', async () => {
+test('fetches slots and strips XSSI without copying or mutating input', async () => {
     const slots = [
         {
             key: 'appointment-key',
@@ -93,19 +93,23 @@ test('fetches slots, strips XSSI, and returns node settings without mutating inp
             json: false,
         },
     ]);
-    assert.deepEqual(output, [
-        { json: { desk: 'AM', product: 'DOC', persons: 6, slots }, pairedItem: { item: 0 } },
-    ]);
+    assert.deepEqual(output, [{ json: { slots }, pairedItem: { item: 0 } }]);
     assert.deepEqual(items, [{ json: { id: 1 } }]);
 });
 
-test('omits input fields and binary when the flag is absent or disabled', async (t) => {
+test('omits node settings, upstream fields, and binary when the flag is absent or disabled', async (t) => {
     for (const parameters of [{}, { options: {} }, { options: { includeInputFields: false } }]) {
         await t.test(JSON.stringify(parameters), async () => {
             const [output] = await execute(
                 [
                     {
-                        json: { id: 1, slots: [{ key: 'input-slot' }] },
+                        json: {
+                            id: 1,
+                            desk: 'input-desk',
+                            product: 'input-product',
+                            persons: 99,
+                            slots: [{ key: 'input-slot' }],
+                        },
                         binary: { attachment: { data: 'aGVsbG8=', mimeType: 'text/plain' } },
                     },
                 ],
@@ -113,7 +117,7 @@ test('omits input fields and binary when the flag is absent or disabled', async 
             );
             assert.deepEqual(output, [
                 {
-                    json: { desk: 'AM', product: 'DOC', persons: 1, slots: [] },
+                    json: { slots: [] },
                     pairedItem: { item: 0 },
                 },
             ]);
@@ -121,7 +125,7 @@ test('omits input fields and binary when the flag is absent or disabled', async 
     }
 });
 
-test('includes input JSON fields when enabled, with node values winning collisions', async () => {
+test('includes only configured desk, product, and persons when enabled, not upstream fields', async () => {
     const items = [
         {
             json: {
@@ -146,8 +150,6 @@ test('includes input JSON fields when enabled, with node values winning collisio
     assert.deepEqual(output, [
         {
             json: {
-                id: 1,
-                details: { label: 'original' },
                 desk: 'AM',
                 product: 'DOC',
                 persons: 6,
@@ -168,7 +170,7 @@ test('keeps slots grouped when explode-slots is absent or disabled', async (t) =
             });
             assert.deepEqual(output, [
                 {
-                    json: { desk: 'AM', product: 'DOC', persons: 1, slots },
+                    json: { slots },
                     pairedItem: { item: 0 },
                 },
             ]);
@@ -176,7 +178,7 @@ test('keeps slots grouped when explode-slots is absent or disabled', async (t) =
     }
 });
 
-test('explodes slots into flat items without copying input fields or binary', async () => {
+test('explodes slots into flat items without node settings, upstream fields, or binary by default', async () => {
     const slots = [
         {
             key: 'first-slot',
@@ -189,7 +191,13 @@ test('explodes slots into flat items without copying input fields or binary', as
     ];
     const items = [
         {
-            json: { id: 1, key: 'input-slot' },
+            json: {
+                id: 1,
+                key: 'input-slot',
+                desk: 'input-desk',
+                product: 'input-product',
+                persons: 99,
+            },
             binary: { attachment: { data: 'aGVsbG8=', mimeType: 'text/plain' } },
         },
     ];
@@ -210,14 +218,14 @@ test('explodes slots into flat items without copying input fields or binary', as
     assert.deepEqual(
         output,
         slots.map((slot) => ({
-            json: { ...slot, desk: 'AM', product: 'DOC', persons: 6 },
+            json: slot,
             pairedItem: { item: 0 },
         })),
     );
     assert.deepEqual(items, originalItems);
 });
 
-test('includes input fields in each exploded item with slot and node values winning collisions', async () => {
+test('includes only configured fields in each exploded item, overriding slot values without copying upstream fields', async () => {
     const items = [
         {
             json: {
@@ -234,7 +242,12 @@ test('includes input fields in each exploded item with slot and node values winn
     const originalItems = structuredClone(items);
     const [output] = await execute(
         items,
-        { options: { explodeSlots: true, includeInputFields: true } },
+        {
+            desk: ' AM ',
+            product: ' DOC ',
+            persons: 6,
+            options: { explodeSlots: true, includeInputFields: true },
+        },
         {
             httpRequest: async () =>
                 apiResponse([
@@ -253,23 +266,21 @@ test('includes input fields in each exploded item with slot and node values winn
     assert.deepEqual(output, [
         {
             json: {
-                id: 1,
                 key: 'first-slot',
                 date: '2026-10-20',
                 desk: 'AM',
                 product: 'DOC',
-                persons: 1,
+                persons: 6,
             },
             pairedItem: { item: 0 },
         },
         {
             json: {
-                id: 1,
                 key: 'second-slot',
                 date: '2026-10-21',
                 desk: 'AM',
                 product: 'DOC',
-                persons: 1,
+                persons: 6,
             },
             pairedItem: { item: 0 },
         },
@@ -305,16 +316,15 @@ test('evaluates explode-slots per input item and preserves ordering and item lin
 
     assert.deepEqual(output, [
         {
-            json: { key: '1-first', desk: 'AM', product: 'DOC', persons: 1 },
+            json: { key: '1-first' },
             pairedItem: { item: 0 },
         },
         {
-            json: { key: '1-second', desk: 'AM', product: 'DOC', persons: 1 },
+            json: { key: '1-second' },
             pairedItem: { item: 0 },
         },
         {
             json: {
-                id: 2,
                 desk: 'AM',
                 product: 'DOC',
                 persons: 2,
@@ -323,11 +333,11 @@ test('evaluates explode-slots per input item and preserves ordering and item lin
             pairedItem: { item: 1 },
         },
         {
-            json: { id: 3, key: '3-first', desk: 'AM', product: 'DOC', persons: 3 },
+            json: { key: '3-first', desk: 'AM', product: 'DOC', persons: 3 },
             pairedItem: { item: 2 },
         },
         {
-            json: { id: 3, key: '3-second', desk: 'AM', product: 'DOC', persons: 3 },
+            json: { key: '3-second', desk: 'AM', product: 'DOC', persons: 3 },
             pairedItem: { item: 2 },
         },
     ]);
@@ -366,11 +376,11 @@ test('resolves all parameters per input item and maintains item links', async ()
     );
     assert.deepEqual(output, [
         {
-            json: { desk: 'AM', product: 'DOC', persons: 1, slots: [{ key: 'DOC' }] },
+            json: { slots: [{ key: 'DOC' }] },
             pairedItem: { item: 0 },
         },
         {
-            json: { id: 2, desk: 'UT', product: 'BIO', persons: 2, slots: [{ key: 'BIO' }] },
+            json: { desk: 'UT', product: 'BIO', persons: 2, slots: [{ key: 'BIO' }] },
             pairedItem: { item: 1 },
         },
     ]);
@@ -379,7 +389,7 @@ test('resolves all parameters per input item and maintains item links', async ()
 test('returns trimmed codes and encodes the desk only in the request path', async () => {
     const [output] = await execute(
         [{ json: {} }],
-        { desk: ' AM/other? ', product: ' DOC ' },
+        { desk: ' AM/other? ', product: ' DOC ', options: { includeInputFields: true } },
         {
             httpRequest: async (options) => {
                 assert.equal(options.url, 'https://oap.ind.nl/oap/api/desks/AM%2Fother%3F/slots');
@@ -396,10 +406,27 @@ test('returns trimmed codes and encodes the desk only in the request path', asyn
     ]);
 });
 
-test('returns node settings with an empty slots array when no appointments are available', async () => {
-    assert.deepEqual(await execute([{ json: {} }]), [
-        [{ json: { desk: 'AM', product: 'DOC', persons: 1, slots: [] }, pairedItem: { item: 0 } }],
-    ]);
+test('returns an empty slots array when no appointments are available', async (t) => {
+    for (const includeInputFields of [false, true]) {
+        await t.test(String(includeInputFields), async () => {
+            assert.deepEqual(
+                await execute([{ json: { id: 1 } }], { options: { includeInputFields } }),
+                [
+                    [
+                        {
+                            json: {
+                                ...(includeInputFields
+                                    ? { desk: 'AM', product: 'DOC', persons: 1 }
+                                    : {}),
+                                slots: [],
+                            },
+                            pairedItem: { item: 0 },
+                        },
+                    ],
+                ],
+            );
+        });
+    }
 });
 
 test('returns an empty output for empty input', async () => {
@@ -523,10 +550,7 @@ test('continues on failure and preserves failed input regardless of the flags', 
             assert.equal(output[0].binary, binary);
             assert.deepEqual(output[0].pairedItem, { item: 0 });
             assert.deepEqual(output[1].json, {
-                ...(options.includeInputFields ? { id: 2 } : {}),
-                desk: 'AM',
-                product: 'DOC',
-                persons: 2,
+                ...(options.includeInputFields ? { desk: 'AM', product: 'DOC', persons: 2 } : {}),
                 ...(options.explodeSlots ? { key: 'slot' } : { slots: [{ key: 'slot' }] }),
             });
             assert.deepEqual(output[1].pairedItem, { item: 1 });
